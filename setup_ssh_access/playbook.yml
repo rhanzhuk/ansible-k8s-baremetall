@@ -1,0 +1,28 @@
+---
+- name: Установка SSH ключа
+  hosts: all
+  gather_facts: no
+  become: true
+
+  vars:
+    ansible_user: "{{ login }}"
+    ansible_ssh_pass: "{{ password }}"
+    ansible_port: "{{ ssh_port | default(22) }}"
+    ansible_connection: ssh
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+  tasks:
+    - name: Проверка есть ли ссш
+      file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Добавляем публичный ключ
+      authorized_key:
+        user: "{{ ansible_user }}"
+        state: present
+        key: "{{ lookup('file', 'files/id_rsa.pub') }}"
+
+#команда запуска
+# ansible-playbook playbook.yml -i "127.0.0.1," -e "login=root password=password"

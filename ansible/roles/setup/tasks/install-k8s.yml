@@ -1,0 +1,135 @@
+---
+- name: Загрузжаем модули при старте
+  copy:
+    dest: /etc/modules-load.d/containerd.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Загрузка модуля в ядро
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Настройка sysctl для K8S
+  copy:
+    dest: /etc/sysctl.d/kubernetes.conf
+    content: |
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.bridge.bridge-nf-call-iptables = 1
+      net.ipv4.ip_forward = 1
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Применить изменения
+  command: sysctl --system
+
+- name: Удалить старый config.toml
+  file:
+    path: /etc/containerd/config.toml
+    state: absent
+
+- name: Генерация конфига containerd
+  shell: |
+    containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+
+- name: SystemdCgroup в containerd
+  replace:
+    path: /etc/containerd/config.toml
+    regexp: '^(\s*)SystemdCgroup\s*=\s*false'
+    replace: '\1SystemdCgroup = true'
+
+- name: Перезапуск containerd
+  systemd:
+    name: containerd
+    enabled: yes
+    state: restarted
+
+- name: Создание keyrings дир
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Скачивание и конвертация GPG ключа Kubernetes
+  shell: |
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key \
+    | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  args:
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+- name: Добавление репозитория Kubernetes
+  copy:
+    dest: /etc/apt/sources.list.d/kubernetes.list
+    content: |
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+    mode: '0644'
+
+- name: Обновление apt кеша
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Установка kubelet, kubeadm, kubectl
+  apt:
+    name:
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: present
+
+- name: Заморозка версий kube-компонентов
+  shell: apt-mark hold kubelet kubeadm kubectl
+  changed_when: false
+
+
+- name: Инсталяция кластера
+  command: >
+    kubeadm init
+    --control-plane-endpoint "{{ control_plane_endpoint }}"
+    --upload-certs
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: Создание .kube 
+  file:
+    path: /root/.kube
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+
+- name: Копирование admin.conf
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    mode: '0644'
+    owner: root
+    group: root
+    remote_src: true 
+
+- name: Установка Calico (CNI)
+  shell: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+  args:
+    creates: /etc/cni/net.d/calico-kubeconfig
+
+- name: Снятие taints
+  shell: kubectl taint nodes {{ control_plane_endpoint }} node-role.kubernetes.io/control-plane- || true
+  args:
+    executable: /bin/bash
+
+
+
+
+
+
+

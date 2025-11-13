@@ -1,0 +1,23 @@
+---
+- name: Установка докер
+  import_tasks: install-docker.yml
+
+- name: Создание директорий
+  import_tasks: create-dir.yml
+
+- name: Установка k8s
+  import_tasks: install-k8s.yml
+
+- name: Установка metallb
+  import_tasks: install-metallb.yml
+
+- name: Создание бд
+  import_tasks: database-docker.yml
+
+- name: Создание стореджа
+  import_tasks: add-storage.yml
+
+
+
+
+

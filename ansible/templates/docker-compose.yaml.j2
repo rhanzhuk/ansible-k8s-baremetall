@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  postgres:
+    image: 'postgres:15.2'
+    restart: unless-stopped
+    container_name: {{ service_name }}-pgsql
+    volumes:
+      - {{ infra_dir }}/pg_data/:/var/lib/postgresql/data
+    env_file:
+      - .env
+    network_mode: "host"
+{% if use_redis | default(false) %}
+  redis:
+    image: redis:7
+    container_name: {{ service_name }}-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --port {{ redis_port | default(6392) }}
+      --loglevel ${REDIS_LOGLEVEL:-warning}
+      --databases 4
+      --save 600 1
+      --save 300 10
+      --save 60 500
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - {{ infra_dir }}/redis_data/:/data
+    env_file:
+      - .env
+    network_mode: "host"
+{% endif %}

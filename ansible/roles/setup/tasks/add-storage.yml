@@ -1,0 +1,33 @@
+---
+- name: Установка имени сервиса
+  set_fact:
+    service_name: "{{ service_name | default('zalupa-ty-tupaya') }}"
+    service_dir: "/opt/{{ service_name | default('zalupa-ty-tupaya') }}"
+
+- name: Создание NS
+  shell: |
+    kubectl create ns {{ ns }} || true
+  args:
+    executable: /bin/bash
+
+- name: Создание PV из шаблона
+  template:
+    src: pv.yaml.j2
+    dest: "{{ service_dir }}/pv.yaml"
+
+- name: Применение PV
+  shell: |
+    kubectl apply -f {{ service_dir }}/pv.yaml
+  args:
+    executable: /bin/bash
+
+- name: Создание PVC из шаблона
+  template:
+    src: pvc.yaml.j2
+    dest: "{{ service_dir }}/pvc.yaml"
+
+- name: Применение PVC
+  shell: |
+    kubectl apply -f {{ service_dir }}/pvc.yaml
+  args:
+    executable: /bin/bash

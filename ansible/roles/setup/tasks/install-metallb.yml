@@ -1,0 +1,19 @@
+---
+- name: Установка MetalLB
+  shell: |
+    kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.8/config/manifests/metallb-frr.yaml
+  args:
+    executable: /bin/bash
+  register: metallb_install
+  changed_when: "'created' in metallb_install.stdout"
+
+- name: Создание ConfigMap IPAddressPool из шаблона
+  template:
+    src: cm-metallb.yaml.j2
+    dest: /opt/kube_man/ingress/cm-metallb.yaml
+
+- name: Применение IPAddressPool
+  shell: |
+    kubectl apply -f /opt/kube_man/ingress/cm-metallb.yaml
+  args:
+    executable: /bin/bash

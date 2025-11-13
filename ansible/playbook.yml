@@ -1,0 +1,19 @@
+---
+- name: Полная установка окружения
+  hosts: all
+  become: true
+
+  vars:
+    service_name: gold-market 
+    postgres_user: golduser 
+    postgres_password: password 
+    postgres_db: db 
+    redis_password: password 
+    control_plane_endpoint: hostname 
+    metallb_ip: 127.0.0.1 
+    storage_size: 4Gi 
+    ns: dev
+    use_redis: true
+
+  roles:
+    - setup

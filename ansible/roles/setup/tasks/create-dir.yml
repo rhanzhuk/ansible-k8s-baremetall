@@ -1,0 +1,34 @@
+---
+- name: Имя сервиса
+  set_fact:
+    service_name: "{{ service_name | default('zalupa-ty-tupaya') }}"
+
+- name: Создание базовых директорий
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "/opt/{{ service_name }}"
+    - "/opt/infra/{{ service_name }}/pg_data"
+    - "/opt/infra/{{ service_name }}/redis_data"
+    - "/opt/kube_man/ingress"
+
+- name: Создание директорий под сервис
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: www-data
+    group: www-data
+  loop:
+    - "/opt/{{ service_name }}/storage/app/imports"
+    - "/opt/{{ service_name }}/storage/app/public"
+    - "/opt/{{ service_name }}/storage/app/private"
+    - "/opt/{{ service_name }}/storage/framework/cache/data"
+    - "/opt/{{ service_name }}/storage/framework/sessions"
+    - "/opt/{{ service_name }}/storage/framework/testing"
+    - "/opt/{{ service_name }}/storage/framework/views"
+    - "/opt/{{ service_name }}/storage/logs"
